@@ -1,0 +1,6 @@
+[[upstream]]
+name = "home-proxy"
+url = "10.0.12.34"
+port = 9090
+token = "08ihv78r"
+ssl = false
