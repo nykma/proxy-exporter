@@ -2,10 +2,15 @@
   description = "A Nix-flake-based Rust development environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable"; # unstable Nixpkgs
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+    naersk = {
+      url = "github:nix-community/naersk";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
     };
   };
 
@@ -68,6 +73,48 @@
               # Required by rust-analyzer
               RUST_SRC_PATH = "${pkgs.rustToolchain}/lib/rustlib/src/rust/library";
               LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.openssl ];
+            };
+          };
+        }
+      );
+
+      packages = forEachSupportedSystem (
+        { pkgs, system }:
+        let
+          naersk' = inputs.naersk.lib.${system}.override {
+              rustc = pkgs.rustToolchain;
+              cargo = pkgs.rustToolchain;
+          };
+          proxy-exporter = naersk'.buildPackage {
+            src = ./.;
+          };
+        in
+        {
+          default = proxy-exporter;
+          inherit proxy-exporter;
+        }
+        // inputs.nixpkgs.lib.optionalAttrs (inputs.nixpkgs.lib.hasSuffix "linux" system) {
+          docker-image = pkgs.dockerTools.buildImage {
+            name = "proxy-exporter";
+            tag = "latest";
+
+            copyToRoot = [
+              proxy-exporter
+              pkgs.cacert
+            ];
+
+            config = {
+              Cmd = [ "/bin/proxy-exporter" ];
+              ExposedPorts = {
+                "9898/tcp" = { };
+              };
+              Env = [
+                "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+                "CONFIG_PATH=/config/config.toml"
+              ];
+              Volumes = {
+                "/config" = { };
+              };
             };
           };
         }
