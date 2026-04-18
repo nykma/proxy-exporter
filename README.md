@@ -18,7 +18,7 @@ docker run -d \
   -p 9898:9898 \
   -v /path/to/config.toml:/app/config.toml:ro \
   -e CONFIG_PATH=/app/config.toml \
-  proxy-exporter:latest
+  ghcr.io/nykma/proxy-exporter:latest-x86_64
   
 curl http://127.0.0.1:9898/metrics
 ```
@@ -28,8 +28,7 @@ curl http://127.0.0.1:9898/metrics
 ```yaml
 services:
   proxy-exporter:
-    image: proxy-exporter:latest
-    # build: .          # 或直接从 Dockerfile 构建
+    image: ghcr.io/nykma/proxy-exporter:latest-x86_64
     container_name: proxy-exporter
     ports:
       - "9898:9898"
@@ -54,7 +53,7 @@ docker run -d \
   -p 9090:9090 \
   -e LISTEN_ADDRESS=0.0.0.0:9090 \
   -v /path/to/config.toml:/app/config.toml \
-  proxy-exporter:latest
+  ghcr.io/nykma/proxy-exporter:latest-aarch64
 ```
 
 ### 访问指标
@@ -83,14 +82,25 @@ token = "your-secret-token"
 ssl = true
 ```
 
+### Prometheus 侧 scrape 配置
+
+```yaml
+# /etc/prometheus/prometheus.yaml
+scrape_configs:
+  - job_name: 'proxy-exporter'
+    scrape_interval: '1s'
+    static_configs:
+      - targets: ['10.11.45.14:9898']
+```
+
 ## 暴露的指标
 
 ### 流量总量指标
 
 | 指标名 | 类型 | 说明 |
 |---|---|---|
-| `proxy_up_total_bytes` | Gauge | 上游总上传字节数 |
-| `proxy_down_total_bytes` | Gauge | 上游总下载字节数 |
+| `proxy_up_total_bytes` | Gauge | 实例总上传 Bytes |
+| `proxy_down_total_bytes` | Gauge | 实例总下载 Bytes |
 
 标签：
 
@@ -109,8 +119,8 @@ proxy_down_total_bytes{name="home-proxy"} 5.24288e+08
 
 | 指标名 | 类型 | 说明 |
 |---|---|---|
-| `proxy_connection_upload_bytes` | Gauge | 单个连接的上传字节数 |
-| `proxy_connection_download_bytes` | Gauge | 单个连接的下载字节数 |
+| `proxy_connection_upload_bytes` | Gauge | 单个连接的上传 Bytes |
+| `proxy_connection_download_bytes` | Gauge | 单个连接的下载 Bytes |
 
 标签：
 
@@ -158,7 +168,7 @@ proxy_connection_upload_bytes{chain="默认代理",connection_id="d2d97ec0-d27d-
    ```json
      { "chains": [ "🇭🇰 香港 09", "全球手动" , "默认代理" , "电报消息" ] }
    ```
-   会被拆分成四条 gauge 数据，它们的 `id` tag 有相同的值，gauge 值也相同，`chain` tag 分别为 `🇭🇰 香港 09` 、 `全球手动` etc. 。如果你需要统计 per ID 的连接数据，请参考以下的 PromQL: 
+   会被拆分成四条 gauge 数据，它们的 `id` tag 有相同的值，gauge 值也相同，`chain` tag 分别为 `🇭🇰 香港 09` 、 `全球手动` etc. 。如果你需要统计 per connection 的数据，请参考以下的 PromQL: 
    ```promql
-     max by (id) (proxy_connection_upload_bytes)
+     max by (connection_id) (proxy_connection_upload_bytes)
    ```
