@@ -23,9 +23,7 @@ fn full<T: Into<Bytes>>(chunk: T) -> BoxBody {
         .boxed()
 }
 
-async fn handle(
-    req: Request<hyper::body::Incoming>,
-) -> Result<Response<BoxBody>, hyper::Error> {
+async fn handle(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody>, hyper::Error> {
     match req.uri().path() {
         "/metrics" => {
             let encoder = TextEncoder::new();
@@ -70,7 +68,8 @@ async fn main() {
             upstream.url,
             upstream.port
         );
-        tokio::spawn(collector::traffic::run(upstream));
+        tokio::spawn(collector::traffic::run(upstream.clone()));
+        tokio::spawn(collector::connections::run(upstream.clone()));
     }
 
     let listen_addr: SocketAddr = std::env::var("LISTEN_ADDRESS")
@@ -78,12 +77,10 @@ async fn main() {
         .parse()
         .expect("invalid LISTEN_ADDRESS");
 
-    let listener = TcpListener::bind(listen_addr)
-        .await
-        .unwrap_or_else(|e| {
-            eprintln!("failed to bind {}: {}", listen_addr, e);
-            std::process::exit(1);
-        });
+    let listener = TcpListener::bind(listen_addr).await.unwrap_or_else(|e| {
+        eprintln!("failed to bind {}: {}", listen_addr, e);
+        std::process::exit(1);
+    });
 
     eprintln!("listening on {}", listen_addr);
 

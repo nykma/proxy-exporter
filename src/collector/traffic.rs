@@ -22,9 +22,7 @@ pub async fn run(config: Upstream) {
     }
 }
 
-async fn collect_once(
-    config: &Upstream,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn collect_once(config: &Upstream) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let url = config.ws_url("traffic");
     eprintln!("[{}] connecting to {}", config.name, url);
     let (mut stream, _) = tokio_tungstenite::connect_async(&url).await?;
@@ -40,8 +38,12 @@ async fn collect_once(
                 }
             };
             let labels = &[config.name.as_str()];
-            metrics::UP_TOTAL.with_label_values(labels).set(payload.up_total as f64);
-            metrics::DOWN_TOTAL.with_label_values(labels).set(payload.down_total as f64);
+            metrics::UP_TOTAL
+                .with_label_values(labels)
+                .set(payload.up_total as f64);
+            metrics::DOWN_TOTAL
+                .with_label_values(labels)
+                .set(payload.down_total as f64);
         }
     }
 
