@@ -167,58 +167,55 @@ async fn collect_once(config: &Upstream) -> Result<(), Box<dyn std::error::Error
                 let source_ip_asn = &conn.metadata.source_ip_asn;
                 let destination_ip_asn = &conn.metadata.destination_ip_asn;
 
-                for chain in &conn.chains {
-                    if chain.is_empty() {
-                        continue;
-                    }
-                    for provider_chain in &conn.provider_chains {
-                        if provider_chain.is_empty() {
-                            continue;
-                        }
-                        // Create labels array (must match the order in metrics.rs)
-                        let labels = &[
-                            upstream_name,
-                            conn_id,
-                            network,
-                            conn_type,
-                            source_ip,
-                            destination_ip,
-                            source_port,
-                            destination_port,
-                            source_geo_ip,
-                            destination_geo_ip,
-                            source_ip_asn,
-                            destination_ip_asn,
-                            inbound_ip,
-                            inbound_port,
-                            inbound_name,
-                            inbound_user,
-                            host,
-                            dns_mode,
-                            &uid_str,
-                            process,
-                            process_path,
-                            special_proxy,
-                            special_rules,
-                            remote_destination,
-                            &dscp_str,
-                            sniff_host,
-                            rule,
-                            rule_payload,
-                            chain,
-                            provider_chain,
-                        ];
+                for i in 0..conn.chains.len() {
+                    let chain = conn.chains.get(i).map(|s| s.as_str()).unwrap_or("");
+                    let provider_chain = conn
+                        .provider_chains
+                        .get(i)
+                        .map(|s| s.as_str())
+                        .unwrap_or("");
+                    let labels = &[
+                        upstream_name,
+                        conn_id,
+                        network,
+                        conn_type,
+                        source_ip,
+                        destination_ip,
+                        source_port,
+                        destination_port,
+                        source_geo_ip,
+                        destination_geo_ip,
+                        source_ip_asn,
+                        destination_ip_asn,
+                        inbound_ip,
+                        inbound_port,
+                        inbound_name,
+                        inbound_user,
+                        host,
+                        dns_mode,
+                        &uid_str,
+                        process,
+                        process_path,
+                        special_proxy,
+                        special_rules,
+                        remote_destination,
+                        &dscp_str,
+                        sniff_host,
+                        rule,
+                        rule_payload,
+                        chain,
+                        provider_chain,
+                    ];
 
-                        // Record upload bytes
-                        metrics::CONNECTION_UPLOAD
-                            .with_label_values(labels)
-                            .set(conn.upload as f64);
+                    // Record upload bytes
+                    metrics::CONNECTION_UPLOAD
+                        .with_label_values(labels)
+                        .set(conn.upload as f64);
 
-                        // Record download bytes
-                        metrics::CONNECTION_DOWNLOAD
-                            .with_label_values(labels)
-                            .set(conn.download as f64);
-                    }
+                    // Record download bytes
+                    metrics::CONNECTION_DOWNLOAD
+                        .with_label_values(labels)
+                        .set(conn.download as f64);
                 }
             }
         }
